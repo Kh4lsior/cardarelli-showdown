@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineCardarelli Showdown</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; 
+            min-height: 100vh;
+            margin: 0;
+            padding: 40px 20px; 
+            background-color: #f0f2f5;
+            color: #333;
+            box-sizing: border-box;
+        }
+        h1 {
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 750px; 
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            align-items: stretch; 
+        }
+        .box {
+            flex: 1;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            cursor: pointer;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            transition: transform 0.2s, box-shadow 0.2s;
+            height: auto; 
+        }
+        .box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        .box img {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 2 / 3; 
+            object-fit: cover;
+            background-color: #e4e6eb;
+        }
+        }
+        .content {
+            padding: 20px;
+            box-sizing: border-box; 
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 1 1 auto; 
+        }
+        .content h3 {
+            margin: 0 0 12px 0;
+            padding: 0 10px; 
+            font-size: 1.3rem;
+            color: #1a1a1a;
+        }
+        .content p {
+            margin: 0 0 20px 0; 
+            padding: 0 10px; 
+            font-size: 0.95rem;
+            color: #65676b;
+            line-height: 1.5;
+        }
+		#timer-box {
+		    font-size: 1.2rem;
+		    font-weight: bold;
+		    color: #d9534f;
+ 		   margin-bottom: 20px;
+ 		   height: 25px;
+		}
+		.box.disabled {
+ 		   cursor: not-allowed;
+ 		   transform: none !important;
+ 		   box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+		}
+		#btn-ricarica {
+ 		   position: fixed;
+ 		   bottom: 20px;
+  		  right: 20px;
+  		  padding: 10px 15px;
+  		  background-color: #65676b;
+  		  color: white;
+  		  border: none;
+   		 border-radius: 8px;
+  		  cursor: pointer;
+  		  font-size: 0.9rem;
+   		 box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+   		 transition: background-color 0.2s;
+		}
+		#btn-ricarica:hover {
+  		  background-color: #333;
+		}
+		/* Regole specifiche per schermi mobili */
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 10px;
+            }
+            .container {
+                gap: 15px;
+            }
+            .content {
+                padding: 12px 8px;
+            }
+            .content h3 {
+                font-size: 1rem;
+                margin-bottom: 5px;
+            }
+            .content p {
+                font-size: 0.85rem;
+                color: #65676b;
+                line-height: 1.4;
+                word-wrap: break-word; 
+                margin-bottom: 10px;
+            }
+            #btn-ricarica {
+                bottom: 10px;
+                right: 10px;
+                padding: 8px 12px;
+            }
+        }
+		
+    </style>
+</head>
+<body>
+
+	<h1>Quale preferiresti vedere?</h1>
+    
+    <div id="timer-box" style="display: none;">
+        Attendi <span id="timer">3</span> secondi...
+    </div>
+    <div class="container">
+        <div id="sinistra" class="box" onclick="vota('sinistra')">
+            <img id="img-sinistra" src="" alt="Immagine Sinistra">
+            <div class="content">
+                <h3 id="nome-sinistra">Caricamento...</h3>
+                <p id="desc-sinistra">Attendere...</p>
+            </div>
+        </div>
+        
+        <div id="destra" class="box" onclick="vota('destra')">
+            <img id="img-destra" src="" alt="Immagine Destra">
+            <div class="content">
+                <h3 id="nome-destra">Caricamento...</h3>
+                <p id="desc-destra">Attendere...</p>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const SUPABASE_URL = "https://qxgxcjiqqqwwcfrjpoou.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_lAqkGIzetY0xLjynm2T0OA_f8jBslU5";
+
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    let elementoSinistro = null;
+    let elementoDestro = null;
+    let bloccato = false; 
+	let contoAllaRovescia = null;
+
+function avviaTimer(secondi) {
+        let tempo = secondi;
+        const timerBox = document.getElementById('timer-box');
+        const timerElement = document.getElementById('timer');
+        const boxSinistra = document.getElementById('sinistra');
+        const boxDestra = document.getElementById('destra');
+
+        timerBox.style.display = 'block';
+        timerElement.innerText = tempo;
+        
+        boxSinistra.classList.add('disabled');
+        boxDestra.classList.add('disabled');
+
+        if (contoAllaRovescia) clearInterval(contoAllaRovescia);
+
+        contoAllaRovescia = setInterval(() => {
+            tempo--;
+            if (tempo > 0) {
+                timerElement.innerText = tempo;
+            } else {
+                clearInterval(contoAllaRovescia);
+                timerBox.style.display = 'none';
+                boxSinistra.classList.remove('disabled');
+                boxDestra.classList.remove('disabled');
+                bloccato = false; // Sblocca i click solo a timer scaduto
+            }
+        }, 1000);
+    }
+	
+    async function caricaCoppia() {
+        try {
+            bloccato = true;
+            
+            // Carica due elementi casuali
+            const { data, error } = await client.rpc('ottieni_due_casuali');
+            
+            if (error) throw error;
+            if (!data || data.length < 2) {
+                alert("Dati insufficienti nel database.");
+                return;
+            }
+
+            elementoSinistro = data[0];
+            elementoDestro = data[1];
+
+            // Aggiorna l'interfaccia grafica
+            document.getElementById('img-sinistra').src = elementoSinistro.immagine_url || 'https://via.placeholder.com/400x250?text=Nessuna+Immagine';
+            document.getElementById('nome-sinistra').innerText = elementoSinistro.nome;
+            document.getElementById('desc-sinistra').innerText = elementoSinistro.descrizione || '';
+
+            document.getElementById('img-destra').src = elementoDestro.immagine_url || 'https://via.placeholder.com/400x250?text=Nessuna+Immagine';
+            document.getElementById('nome-destra').innerText = elementoDestro.nome;
+            document.getElementById('desc-destra').innerText = elementoDestro.descrizione || '';
+            
+			// ECCO IL PUNTO C: Avvia il timer di 3 secondi (che alla fine sbloccherà i click)
+            avviaTimer(3);
+		
+			
+        } catch (err) {
+            console.error("Errore nel caricamento della coppia:", err.message);
+            bloccato = false;
+        }
+    }
+
+    async function vota(posizione) {
+        if (bloccato) return;
+        // Blocchiamo immediatamente l'interfaccia per evitare click doppi o compulsivi
+        bloccato = true; 
+        
+        let elementoScelto = (posizione === 'sinistra') ? elementoSinistro : elementoDestro;
+        
+        try {
+            // 1. Aggiorna il dato "mostrato" per ENTRAMBI solo ora che l'utente ha effettivamente espresso un voto
+            await client.rpc('incrementa_mostrato', { 
+                id_sinistro: elementoSinistro.id, 
+                id_destro: elementoDestro.id 
+            });
+
+            // 2. Registra il voto per l'elemento selezionato
+            await client.rpc('incrementa_voto', { id_scelto: elementoScelto.id });
+            
+            // 3. Carica la nuova coppia (la funzione caricaCoppia gestirà lo sblocco dell'interfaccia)
+            await caricaCoppia();
+        } catch (err) {
+            console.error("Errore durante la registrazione della votazione:", err.message);
+            bloccato = false;
+        }
+    }
+
+    // Avvio iniziale
+    caricaCoppia();
+</script>
+<button id="btn-ricarica" onclick="caricaCoppia()">Ricarica ↻</button>
+</body>
+</html>
